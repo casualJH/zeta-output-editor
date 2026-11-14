@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.2.6
+// @version      0.9.0
 // @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -369,7 +369,7 @@
 
   function refresh() {
     fitEditor();
-    const current = !!result.value && source.value === outputSource;
+    const current = !!result.value.trim() && source.value === outputSource;
     get('sourceCount').textContent = `${Array.from(source.value).length}자`;
     get('resultCount').textContent = `${Array.from(result.value).length}자`;
     get('copy').disabled = !current || !!active;
@@ -476,12 +476,16 @@
   }
 
   function findEditField(requireMarkers = true) {
-    const editing = [...document.querySelectorAll('button[aria-label="Save edit"], button[aria-label="Cancel editing"]')]
-      .some(button => button.getClientRects().length);
-    if (!editing) return null;
-    const fields = [...document.querySelectorAll('textarea[name="message"][maxlength="5000"]')]
-      .filter(field => field.getClientRects().length && !field.disabled && !field.readOnly && (!requireMarkers || /^\s*@[^@：:\n]{0,80}[:：]/.test(field.value)));
-    return fields.length === 1 ? fields[0] : null;
+    const controls = [...document.querySelectorAll('button[aria-label="Cancel editing"]')]
+      .filter(button => button.getClientRects().length);
+    if (controls.length !== 1) return null;
+    const editor = controls[0].closest('section');
+    if (!editor) return null;
+    const fields = [...editor.querySelectorAll('textarea[name="message"]')]
+      .filter(field => field.getClientRects().length && !field.disabled && !field.readOnly);
+    if (fields.length !== 1) return null;
+    const field = fields[0];
+    return !requireMarkers || /^\s*@[^@：:\n]{0,80}[:：]/.test(field.value) ? field : null;
   }
 
   let importedEdit = null;
@@ -687,7 +691,7 @@
   get('copy').onclick = async () => {
     if (checkRoom()) return;
     const value = result.value;
-    if (!value || source.value !== outputSource || active) return;
+    if (!value.trim() || source.value !== outputSource || active) return;
     if (/```|~~~/.test(splitStatus(value).body)) {
       status('수정본에서 코드블록 표식을 지운 뒤 복사하세요.');
       return;
@@ -696,9 +700,10 @@
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
       else if (typeof GM_setClipboard === 'function') GM_setClipboard(value, 'text');
       else throw new Error();
-      refresh();
+      if (checkRoom() || result.value !== value || source.value !== outputSource) return;
       status('수정본을 복사했습니다.');
     } catch {
+      if (checkRoom() || result.value !== value || source.value !== outputSource || active) return;
       if (typeof GM_setClipboard === 'function') {
         try {
           GM_setClipboard(value, 'text');
