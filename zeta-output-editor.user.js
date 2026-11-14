@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.0.0
+// @version      1.0.1
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -163,7 +163,7 @@
         <p id="modelStatus" role="status"></p>
         <label>한도 초과 시 대체 모델<select id="fallback"></select></label>
         <label id="customLabel" hidden>직접 입력할 모델 ID<input id="customModel" autocapitalize="none" autocomplete="off" spellcheck="false"></label>
-        <label>문학적 보완 지침<textarea id="prompt"></textarea></label>
+        <label>Gemini에게 전달할 지침<textarea id="prompt"></textarea></label>
         <div class="actions"><button id="save" type="button">설정 저장</button><button id="reset" type="button">기본 지침 불러오기</button></div>
       </section>
       <div id="editorTabs" class="actions editView" aria-label="편집 화면">
