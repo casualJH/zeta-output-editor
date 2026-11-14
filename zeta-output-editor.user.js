@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.2.2
+// @version      0.2.3
 // @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -115,7 +115,9 @@
       button { min-height:40px; padding:6px 10px; border-radius:9px; border:1px solid var(--line); color:var(--text); background:var(--field); cursor:pointer; }
       button:disabled { opacity:.5; cursor:default; }
       button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-      #run,#copy,#save,#open { background:var(--accent); color:var(--accent-text); border-color:transparent; }
+      #run,#overwrite,#save { background:var(--accent); color:var(--accent-text); border-color:transparent; }
+      #open { background:#e6e6e6; color:#222; border-color:#888; }
+      :host([data-theme="dark"]) #open { background:#353535; color:#f5f5f5; border-color:#777; }
       #clearEdit { color:var(--danger); }
       #panel { position:fixed; overflow:hidden; display:flex; flex-direction:column; background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 36px #15101c38; font:14px/1.45 system-ui,sans-serif; }
       :host([data-position]:not([data-panel])) { left:var(--button-x); top:var(--button-y); right:auto; bottom:auto; }
@@ -665,9 +667,9 @@
 
   get('clearEdit').onclick = () => {
     if (checkRoom()) return;
-    const field = findEditField();
-    if (!field || field !== importedEdit?.field || field.value !== importedEdit.value) {
-      status('현재 제타 편집창의 원문을 먼저 가져와 주세요.');
+    const field = findEditField(false);
+    if (!field) {
+      status('제타 메시지 수정창을 열어 주세요.');
       return;
     }
     writeEditField(field, '');
