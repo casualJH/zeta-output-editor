@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.2.4
+// @version      0.2.5
 // @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -101,12 +101,14 @@
         color-scheme:light;
         --surface:#fcfaf7; --field:#fff; --text:#252321; --muted:#625c56;
         --line:#ddd6cf; --soft:#f0ebe5; --selected:#eee3fa;
+        --action:#d7c7ef; --action-text:#332345; --source-selected:#f3ebfa;
         --accent:#624197; --accent-text:#fff; --danger:#9c3835;
       }
       :host([data-theme="dark"]) {
         color-scheme:dark;
         --surface:#1b1b1b; --field:#242424; --text:#f4f4f4; --muted:#bfbfbf;
         --line:#484848; --soft:#2c2c2c; --selected:#444;
+        --action:#cdb4ee; --action-text:#271936; --source-selected:var(--selected);
         --accent:#dedede; --accent-text:#202020; --danger:#ffb5ae;
       }
       * { box-sizing:border-box; }
@@ -115,7 +117,8 @@
       button { min-height:40px; padding:6px 10px; border-radius:9px; border:1px solid var(--line); color:var(--text); background:var(--field); cursor:pointer; }
       button:disabled { opacity:.5; cursor:default; }
       button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-      #run,#overwrite,#save { background:var(--accent); color:var(--accent-text); border-color:transparent; }
+      #save { background:var(--accent); color:var(--accent-text); border-color:transparent; }
+      #run,#overwrite { background:var(--action); color:var(--action-text); border-color:transparent; }
       #open { background:#e6e6e6; color:#222; border-color:#888; }
       :host([data-theme="dark"]) #open { background:#353535; color:#f5f5f5; border-color:#777; }
       #clearEdit { color:var(--danger); }
@@ -130,6 +133,7 @@
       #editorTabs { background:var(--soft); border-radius:10px; padding:3px; margin-bottom:8px; }
       #editorTabs button { flex:1; min-height:36px; border-color:transparent; background:transparent; }
       #panel[data-view="source"] #sourceTab,#panel[data-view="result"] #resultTab { background:var(--selected); font-weight:700; }
+      #panel[data-view="source"] #sourceTab { background:var(--source-selected); }
       #allModels { display:inline; width:auto; }
       label { display:block; margin:8px 0; min-width:0; color:var(--muted); }
       textarea,input,select { display:block; width:100%; padding:9px; margin-top:5px; font-size:16px; color:var(--text); background:var(--field); border:1px solid var(--line); border-radius:10px; }
