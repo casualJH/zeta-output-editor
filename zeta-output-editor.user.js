@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.9.0
-// @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
+// @version      1.0.0
+// @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
 // @run-at       document-idle
