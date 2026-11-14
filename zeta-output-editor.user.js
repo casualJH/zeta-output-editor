@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.2.5
+// @version      0.2.6
 // @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -101,14 +101,14 @@
         color-scheme:light;
         --surface:#fcfaf7; --field:#fff; --text:#252321; --muted:#625c56;
         --line:#ddd6cf; --soft:#f0ebe5; --selected:#eee3fa;
-        --action:#d7c7ef; --action-text:#332345; --source-selected:#f3ebfa;
+        --action:#d7c7ef; --action-text:#332345; --source-selected:#d9c7ef;
         --accent:#624197; --accent-text:#fff; --danger:#9c3835;
       }
       :host([data-theme="dark"]) {
         color-scheme:dark;
         --surface:#1b1b1b; --field:#242424; --text:#f4f4f4; --muted:#bfbfbf;
         --line:#484848; --soft:#2c2c2c; --selected:#444;
-        --action:#cdb4ee; --action-text:#271936; --source-selected:var(--selected);
+        --action:var(--accent); --action-text:var(--accent-text); --source-selected:var(--selected);
         --accent:#dedede; --accent-text:#202020; --danger:#ffb5ae;
       }
       * { box-sizing:border-box; }
