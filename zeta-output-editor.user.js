@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.2.1
+// @version      0.2.2
 // @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -170,6 +170,9 @@
         <button id="run" class="sourceView" type="button">보정 실행</button>
         <button id="retry" class="resultView" type="button" disabled>다시 시도</button>
         <button id="cancel" type="button" disabled>취소</button>
+        <button id="overwrite" class="resultView" type="button" disabled>수정창에 덮어쓰기</button>
+      </div>
+      <div class="actions editView resultView" style="margin-top:6px">
         <button id="copy" class="resultView" type="button" disabled>수정본 복사</button>
         <button id="clearEdit" class="resultView" type="button">수정창 비우기</button>
       </div>
@@ -364,6 +367,7 @@
     get('sourceCount').textContent = `${Array.from(source.value).length}자`;
     get('resultCount').textContent = `${Array.from(result.value).length}자`;
     get('copy').disabled = !current || !!active;
+    get('overwrite').disabled = !current || !!active;
 
     get('run').disabled = !!active || !source.value.trim();
     get('retry').disabled = !!active || !attempted || !source.value.trim();
@@ -465,12 +469,12 @@
     }
   }
 
-  function findEditField() {
+  function findEditField(requireMarkers = true) {
     const editing = [...document.querySelectorAll('button[aria-label="Save edit"], button[aria-label="Cancel editing"]')]
       .some(button => button.getClientRects().length);
     if (!editing) return null;
     const fields = [...document.querySelectorAll('textarea[name="message"][maxlength="5000"]')]
-      .filter(field => field.getClientRects().length && !field.disabled && /^\s*@[^@：:\n]{0,80}[:：]/.test(field.value));
+      .filter(field => field.getClientRects().length && !field.disabled && !field.readOnly && (!requireMarkers || /^\s*@[^@：:\n]{0,80}[:：]/.test(field.value)));
     return fields.length === 1 ? fields[0] : null;
   }
 
@@ -631,6 +635,34 @@
   result.oninput = () => {
     refresh();
   };
+  function writeEditField(field, value) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+    setter.call(field, value);
+    field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+  }
+
+  get('overwrite').onclick = () => {
+    if (checkRoom() || active || source.value !== outputSource || !result.value.trim()) return;
+    const field = findEditField(false);
+    if (!field) {
+      status('제타에서 덮어쓸 메시지 수정창을 열어 주세요.');
+      return;
+    }
+    const value = result.value;
+    if (field.maxLength >= 0 && value.length > field.maxLength) {
+      status(`수정본이 제타 입력 한도(${field.maxLength}자)를 넘습니다. 수정본을 줄여 주세요.`);
+      return;
+    }
+    if (/```|~~~/.test(splitStatus(value).body)) {
+      status('본문의 코드블록 표식을 지운 뒤 다시 눌러 주세요.');
+      return;
+    }
+    const unchangedEdit = importedEdit?.field === field && importedEdit.value === field.value && importedEdit.value === outputSource;
+    if (!unchangedEdit && !window.confirm('현재 열려 있는 제타 수정창에 수정본을 덮어쓸까요?')) return;
+    writeEditField(field, value);
+    status('제타 수정창에 넣었습니다. 내용을 확인한 뒤 제타에서 저장하세요.');
+  };
+
   get('clearEdit').onclick = () => {
     if (checkRoom()) return;
     const field = findEditField();
@@ -638,9 +670,7 @@
       status('현재 제타 편집창의 원문을 먼저 가져와 주세요.');
       return;
     }
-    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-    setValue.call(field, '');
-    field.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    writeEditField(field, '');
     refresh();
     importedEdit = null;
     status('제타 편집 입력칸을 비웠습니다. 가져온 원문은 보정 창에 남아 있습니다.');
