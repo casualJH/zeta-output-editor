@@ -12,6 +12,9 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setClipboard
 // @connect      generativelanguage.googleapis.com
+// @updateURL    https://raw.githubusercontent.com/casualJH/zeta-output-editor/main/zeta-output-editor.user.js
+// @downloadURL  https://raw.githubusercontent.com/casualJH/zeta-output-editor/main/zeta-output-editor.user.js
+// @homepageURL  https://github.com/casualJH/zeta-output-editor
 // ==/UserScript==
 (function () {
   'use strict';
