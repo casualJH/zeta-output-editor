@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      0.2.0
+// @version      0.2.1
 // @description  Gemini로 제타 대사와 지문을 보완하고 수정본을 복사합니다.
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -166,6 +166,7 @@
       </div>
       <div class="actions editView">
         <button id="import" class="sourceView" type="button">수정창에서 가져오기</button>
+        <button id="clearSource" class="sourceView" type="button">원문 지우기</button>
         <button id="run" class="sourceView" type="button">보정 실행</button>
         <button id="retry" class="resultView" type="button" disabled>다시 시도</button>
         <button id="cancel" type="button" disabled>취소</button>
@@ -391,6 +392,7 @@
   }
 
   function run(alternateModel = '') {
+    checkRoom();
     if (active) return;
     const snapshot = source.value;
     try {
@@ -432,6 +434,7 @@
           generationConfig: { responseMimeType: 'application/json', responseSchema: { type: 'ARRAY', items: { type: 'STRING' } } }
         }),
         onload: reply => finish(() => {
+          if (checkRoom()) return;
           if (reply.status === 429 && !alternateModel && backupModel && backupModel !== selectedModel) {
             run(backupModel);
             if (active) status('기본 모델 한도를 초과해 대체 모델로 다시 요청했습니다.');
@@ -474,6 +477,7 @@
   let importedEdit = null;
 
   function importEditText(quiet = false) {
+    checkRoom();
     const field = findEditField();
     const value = field?.value;
     if (!value) {
@@ -586,6 +590,7 @@
 
   get('open').onclick = event => {
     if (suppressClick && event.detail !== 0) return;
+    checkRoom();
     if (!source.value) importEditText(true);
     host.setAttribute('data-panel', '');
     updateViewport();
@@ -627,6 +632,7 @@
     refresh();
   };
   get('clearEdit').onclick = () => {
+    if (checkRoom()) return;
     const field = findEditField();
     if (!field || field !== importedEdit?.field || field.value !== importedEdit.value) {
       status('현재 제타 편집창의 원문을 먼저 가져와 주세요.');
@@ -643,6 +649,7 @@
   get('retry').onclick = () => run();
   get('cancel').onclick = () => cancel();
   get('copy').onclick = async () => {
+    if (checkRoom()) return;
     const value = result.value;
     if (!value || source.value !== outputSource || active) return;
     if (/```|~~~/.test(splitStatus(value).body)) {
@@ -672,6 +679,37 @@
       }
     }
   };
+  function resetEditor(message) {
+    cancel();
+    source.value = '';
+    result.value = '';
+    outputSource = '';
+    importedEdit = null;
+    attempted = false;
+    showView('source');
+    status(message);
+    refresh();
+  }
+
+  function currentRoom() {
+    return location.pathname.match(/(?:^|\/)rooms\/([^/]+)/)?.[1] || '';
+  }
+
+  let room = currentRoom();
+  function checkRoom() {
+    const next = currentRoom();
+    if (next === room) return false;
+    room = next;
+    resetEditor('대화방이 바뀌어 원문을 초기화했습니다.');
+    return true;
+  }
+
+  get('clearSource').onclick = () => resetEditor('보정 창의 원문을 지웠습니다.');
+  window.addEventListener('popstate', checkRoom);
+  window.addEventListener('pageshow', checkRoom);
+  // 제타의 화면 전환에는 popstate가 발생하지 않을 수 있다.
+  window.setInterval(checkRoom, 350);
+
   function updateViewport() {
     if (position && !launcher.hidden) placeLauncher(position.x, position.y);
     applyPanel();
