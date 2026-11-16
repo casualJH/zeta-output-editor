@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.0.1
+// @version      1.0.2
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -509,6 +509,7 @@
 
   get('import').onclick = () => importEditText();
   const launcher = get('open');
+  launcher.dataset.jhDockIcon = '✏️';
   let position = GM_getValue('launcherPosition', null);
   const panel = get('panel');
   let geometry = GM_getValue('panelGeometry', {});
