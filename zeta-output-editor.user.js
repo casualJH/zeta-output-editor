@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.1.1
+// @version      1.1.2
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -279,8 +279,6 @@
       #panel[data-view="source"] #sourceTab { background:var(--source-selected); }
       #frameAccess { color:#f5f5f5 !important; font:14px/1.5 system-ui,sans-serif; }
       #frameAccess p { color:inherit; margin:8px 0; }
-      #frameAccess input { display:inline; width:auto; }
-      #frameAccess label { color:inherit; }
       #appearance { margin:0 0 10px; border:1px solid var(--line); border-radius:10px; }
       #themeModes { flex-wrap:nowrap; background:var(--soft); padding:3px; border-radius:9px; }
       #themeModes button { flex:1; padding:4px; font-size:12px; border:0; background:transparent; }
@@ -305,10 +303,9 @@
     </style>
       <dialog id="frameAccess" aria-labelledby="frameAccess-title" style="max-width:min(320px,90vw);box-sizing:border-box;color:inherit;background:#30303a;border:1px solid #777;border-radius:12px;padding:14px">
         <strong id="frameAccess-title">Tampermonkey 사이트 접근 안내</strong>
-        <p>채팅 프레임에 연결하지 못했습니다. 아래 링크를 눌러 새 탭에서 사이트를 여세요.</p>
+        <p>채팅 프레임에 연결하지 못했습니다.<br>아래 링크를 눌러 새 탭에서 사이트를 여세요.</p>
         <p><a id="frameAccessLink" target="_blank" rel="noopener noreferrer" style="color:#9fd5ff;text-decoration:underline">frame.pingpong.ai 열기 ↗</a></p>
-        <p>새 탭에서 Safari의 Tampermonkey 메뉴를 열고 <strong>사이트 접근 허용</strong>을 누르세요. 그다음 제타 채팅방으로 돌아와 새로고침하세요.</p>
-        <label><input type="checkbox"> 다시 보지 않기</label>
+        <p>브라우저의 Tampermonkey 메뉴를 열고 <strong>사이트 접근 허용</strong>을 누르세요. 그다음 제타 채팅방으로 돌아와 새로고침하세요.</p>
         <div class="actions"><button type="button" id="closeFrameAccess">닫기</button><button type="button" id="confirmFrameAccess">확인</button></div>
       </dialog>
     <button id="open" type="button" aria-expanded="false">출력 보정</button>
@@ -363,18 +360,13 @@
     </section>`;
   const get = id => root.getElementById(id);
   const frameAccess = get('frameAccess');
-  const frameAccessCheckbox = frameAccess.querySelector('input');
   function showFrameAccess(url) {
-    if (frameAccess.open || GM_getValue('skipFrameAccessNotice', false)) return;
+    if (frameAccess.open) return;
     get('frameAccessLink').href = url;
-    frameAccessCheckbox.checked = false;
     frameAccess.showModal();
   }
   get('closeFrameAccess').onclick = () => frameAccess.close();
-  get('confirmFrameAccess').onclick = () => {
-    if (frameAccessCheckbox.checked) GM_setValue('skipFrameAccessNotice', true);
-    frameAccess.close();
-  };
+  get('confirmFrameAccess').onclick = () => frameAccess.close();
 
   const themeButton = get('theme');
   const systemTheme = matchMedia('(prefers-color-scheme: dark)');
