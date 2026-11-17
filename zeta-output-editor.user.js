@@ -5,8 +5,8 @@
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
-// @run-at       document-idle
 // @match        https://frame.pingpong.ai/*
+// @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
