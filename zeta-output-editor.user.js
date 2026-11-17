@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.1.0
+// @version      1.1.1
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
 // @run-at       document-idle
-// @match        https://frame.pingpong.ai/v1/index.html
+// @match        https://frame.pingpong.ai/*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
@@ -39,6 +39,10 @@
   }
 
   const frameOrigin = 'https://frame.pingpong.ai';
+  function isChatFrameUrl(url) {
+    return url.origin === frameOrigin && /^\/v\d+\/index\.html$/.test(url.pathname);
+  }
+
   const editorProtocol = 'zeta-output-editor/v1';
   const frameSession = crypto.randomUUID();
   const fieldIds = new WeakMap();
@@ -98,7 +102,7 @@
   }
 
   if (location.origin === frameOrigin) {
-    if (window.parent === window) return;
+    if (window.parent === window || !isChatFrameUrl(location)) return;
     window.addEventListener('message', async event => {
       if (event.source !== window.parent || event.origin !== 'https://zeta-ai.io' ||
           event.data?.protocol !== editorProtocol || event.ports.length !== 1) return;
@@ -114,22 +118,28 @@
   function chatFrame() {
     const frames = [...document.querySelectorAll('iframe[src]')].filter(frame => {
       const url = new URL(frame.src);
-      return url.origin === frameOrigin && url.pathname === '/v1/index.html' && frame.getClientRects().length;
+      return isChatFrameUrl(url) && frame.getClientRects().length;
     });
     return frames.length === 1 ? frames[0] : null;
   }
 
-  class FrameAccessError extends Error {}
+  class FrameAccessError extends Error {
+    constructor(url) {
+      super('채팅 프레임에 연결하지 못했습니다. Tampermonkey 사이트 접근 권한을 확인하세요.');
+      this.url = url.origin + url.pathname;
+    }
+  }
 
   function callEditor(command) {
     const frame = chatFrame();
     if (!frame) return Promise.resolve(dispatchEditCommand(command));
     const target = frame.contentWindow;
+    const frameUrl = new URL(frame.src);
     return new Promise((resolve, reject) => {
       const channel = new MessageChannel();
       const timeout = setTimeout(() => {
         channel.port1.close();
-        reject(new FrameAccessError('채팅 프레임에 연결하지 못했습니다. Tampermonkey 사이트 접근 권한을 확인하세요.'));
+        reject(new FrameAccessError(frameUrl));
       }, 1800);
       channel.port1.onmessage = event => {
         clearTimeout(timeout);
@@ -145,7 +155,7 @@
       try { await action(...args); }
       catch (error) {
         status(error.message);
-        if (error instanceof FrameAccessError) showFrameAccess();
+        if (error instanceof FrameAccessError) showFrameAccess(error.url);
       }
     };
   }
@@ -296,7 +306,7 @@
       <dialog id="frameAccess" aria-labelledby="frameAccess-title" style="max-width:min(320px,90vw);box-sizing:border-box;color:inherit;background:#30303a;border:1px solid #777;border-radius:12px;padding:14px">
         <strong id="frameAccess-title">Tampermonkey 사이트 접근 안내</strong>
         <p>채팅 프레임에 연결하지 못했습니다. 아래 링크를 눌러 새 탭에서 사이트를 여세요.</p>
-        <p><a href="https://frame.pingpong.ai/v1/index.html" target="_blank" rel="noopener noreferrer" style="color:#9fd5ff;text-decoration:underline">frame.pingpong.ai 열기 ↗</a></p>
+        <p><a id="frameAccessLink" target="_blank" rel="noopener noreferrer" style="color:#9fd5ff;text-decoration:underline">frame.pingpong.ai 열기 ↗</a></p>
         <p>새 탭에서 Safari의 Tampermonkey 메뉴를 열고 <strong>사이트 접근 허용</strong>을 누르세요. 그다음 제타 채팅방으로 돌아와 새로고침하세요.</p>
         <label><input type="checkbox"> 다시 보지 않기</label>
         <div class="actions"><button type="button" id="closeFrameAccess">닫기</button><button type="button" id="confirmFrameAccess">확인</button></div>
@@ -354,8 +364,9 @@
   const get = id => root.getElementById(id);
   const frameAccess = get('frameAccess');
   const frameAccessCheckbox = frameAccess.querySelector('input');
-  function showFrameAccess() {
+  function showFrameAccess(url) {
     if (frameAccess.open || GM_getValue('skipFrameAccessNotice', false)) return;
+    get('frameAccessLink').href = url;
     frameAccessCheckbox.checked = false;
     frameAccess.showModal();
   }
