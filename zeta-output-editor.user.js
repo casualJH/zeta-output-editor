@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.0.4
+// @version      1.1.0
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -49,20 +49,62 @@
     if (!fieldIds.has(field)) fieldIds.set(field, frameSession + ':' + ++nextFieldId);
     const id = fieldIds.get(field);
     if (command.type === 'read') return { id, value: field.value, maxLength: field.maxLength };
-    if (command.type !== 'write' || command.id !== id || command.expected !== field.value ||
+    if (!['write', 'write-and-save'].includes(command.type) || command.id !== id || command.expected !== field.value ||
         typeof command.value !== 'string' ||
         (field.maxLength >= 0 && command.value.length > field.maxLength)) return null;
     writeEditField(field, command.value);
-    return field.value === command.value ? { id } : null;
+    if (findEditField(false) !== field || field.value !== command.value) return null;
+    if (command.type === 'write-and-save') {
+      const buttons = [...field.closest('section').querySelectorAll('button[aria-label="Save edit"]')]
+        .filter(button => !button.disabled && button.getAttribute('aria-disabled') !== 'true' &&
+          button.getClientRects().length && getComputedStyle(button).visibility === 'visible');
+      if (buttons.length !== 1) return { id, saveRequested: false };
+      buttons[0].click();
+      return { id, saveRequested: true };
+    }
+    return { id };
+  }
+
+  async function openAndReadEditor() {
+    const command = { type: 'read' };
+    const existing = editCommand(command);
+    if (existing) return existing;
+    if (document.querySelector('button[aria-label="Cancel editing"]')) return null;
+    const buttons = [...document.querySelectorAll('button[aria-label="Edit message"]')]
+      .filter(button => !button.disabled && button.getAttribute('aria-disabled') !== 'true' &&
+        button.getClientRects().length && getComputedStyle(button).visibility === 'visible');
+    if (buttons.length !== 1) return null;
+
+    return new Promise(resolve => {
+      const observer = new MutationObserver(check);
+      const timer = setTimeout(() => finish(editCommand(command)), 1100);
+      function finish(field) {
+        observer.disconnect();
+        clearTimeout(timer);
+        resolve(field);
+      }
+      function check() {
+        const field = editCommand(command);
+        if (field) finish(field);
+      }
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      buttons[0].click();
+      check();
+    });
+  }
+
+  function dispatchEditCommand(command) {
+    return command.type === 'open-and-read' ? openAndReadEditor() : editCommand(command);
   }
 
   if (location.origin === frameOrigin) {
     if (window.parent === window) return;
-    window.addEventListener('message', event => {
+    window.addEventListener('message', async event => {
       if (event.source !== window.parent || event.origin !== 'https://zeta-ai.io' ||
           event.data?.protocol !== editorProtocol || event.ports.length !== 1) return;
       const port = event.ports[0];
-      try { port.postMessage(editCommand(event.data)); }
+      try { port.postMessage(await dispatchEditCommand(event.data)); }
+      catch { port.postMessage(null); }
       finally { port.close(); }
     });
     return;
@@ -81,7 +123,7 @@
 
   function callEditor(command) {
     const frame = chatFrame();
-    if (!frame) return Promise.resolve(editCommand(command));
+    if (!frame) return Promise.resolve(dispatchEditCommand(command));
     const target = frame.contentWindow;
     return new Promise((resolve, reject) => {
       const channel = new MessageChannel();
@@ -210,6 +252,8 @@
       #run,#overwrite { background:var(--action); color:var(--action-text); border-color:transparent; }
       #open { background:#e6e6e6; color:#222; border-color:#888; }
       :host([data-theme="dark"]) #open { background:#353535; color:#f5f5f5; border-color:#777; }
+      #overwriteSave { background:#a52632; color:#fff; border-color:transparent; }
+      :host([data-theme="dark"]) #overwriteSave { background:#ff8790; color:#350c12; }
       #clearEdit { color:var(--danger); }
       #panel { position:fixed; overflow:hidden; display:flex; flex-direction:column; background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 36px #15101c38; font:14px/1.45 system-ui,sans-serif; }
       :host([data-position]:not([data-panel])) { left:var(--button-x); top:var(--button-y); right:auto; bottom:auto; }
@@ -293,6 +337,7 @@
         <button id="retry" class="resultView" type="button" disabled>다시 시도</button>
         <button id="cancel" type="button" disabled>취소</button>
         <button id="overwrite" class="resultView" type="button" disabled>수정창에 덮어쓰기</button>
+        <button id="overwriteSave" class="resultView" type="button" disabled>수정창에 덮어쓰고 저장</button>
       </div>
       <div class="actions editView resultView" style="margin-top:6px">
         <button id="copy" class="resultView" type="button" disabled>수정본 복사</button>
@@ -516,6 +561,7 @@
     get('resultCount').textContent = `${Array.from(result.value).length}자`;
     get('copy').disabled = !current || !!active;
     get('overwrite').disabled = !current || !!active;
+    get('overwriteSave').disabled = !current || !!active;
 
     get('run').disabled = !!active || !source.value.trim();
     get('retry').disabled = !!active || !attempted || !source.value.trim();
@@ -623,7 +669,7 @@
     checkRoom();
     const roomId = currentRoom();
     const initialSource = source.value;
-    const field = await callEditor({ type: 'read' });
+    const field = await callEditor({ type: quiet ? 'read' : 'open-and-read' });
     if (currentRoom() !== roomId || source.value !== initialSource) return;
     const value = field?.value;
     if (value && !/^\s*@[^@：:\n]{0,80}[:：]/.test(value)) {
@@ -631,7 +677,7 @@
       return;
     }
     if (!value) {
-      if (!quiet) status('제타에서 캐릭터 메시지 수정창을 먼저 열어 주세요.');
+      if (!quiet) status('편집할 원문을 가져오지 못했습니다. 제타에서 메시지 수정창을 확인하세요.');
       return;
     }
     if (source.value && source.value !== value && !window.confirm('보정 창의 원문을 제타 수정창 내용으로 바꿀까요?')) return;
@@ -817,7 +863,7 @@
   result.oninput = () => {
     refresh();
   };
-  get('overwrite').onclick = editorAction(async () => {
+  const overwriteEdit = editorAction(async (save) => {
     if (checkRoom() || active || source.value !== outputSource || !result.value.trim()) return;
     const roomId = currentRoom();
     const field = await callEditor({ type: 'read' });
@@ -837,12 +883,20 @@
       return;
     }
     const unchangedEdit = importedEdit?.id === field.id && importedEdit.value === field.value && importedEdit.value === outputSource;
-    if (!unchangedEdit && !window.confirm('현재 열려 있는 제타 수정창에 수정본을 덮어쓸까요?')) return;
-    const written = await callEditor({ type: 'write', id: field.id, expected: field.value, value: value });
+    if (!unchangedEdit && !window.confirm(save ? '현재 열려 있는 제타 수정창에 수정본을 덮어쓰고 저장할까요?' : '현재 열려 있는 제타 수정창에 수정본을 덮어쓸까요?')) return;
+    const written = await callEditor({ type: save ? 'write-and-save' : 'write', id: field.id, expected: field.value, value });
     if (currentRoom() !== roomId) return;
     if (!written) { status('수정창이 바뀌었습니다. 다시 시도하세요.'); return; }
-    status('제타 수정창에 넣었습니다. 내용을 확인한 뒤 제타에서 저장하세요.');
+    if (save) {
+      status(written.saveRequested
+        ? '제타에 저장을 요청했습니다.'
+        : '수정본을 넣었지만 저장 버튼을 누를 수 없었습니다. 제타 수정창을 확인하세요.');
+    } else {
+      status('제타 수정창에 넣었습니다. 내용을 확인한 뒤 제타에서 저장하세요.');
+    }
   });
+  get('overwrite').onclick = () => overwriteEdit(false);
+  get('overwriteSave').onclick = () => overwriteEdit(true);
 
   get('clearEdit').onclick = editorAction(async () => {
     if (checkRoom()) return;
