@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.1.4
+// @version      1.1.5
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -266,7 +266,7 @@
       :host([data-theme="dark"]) #overwriteSave { background:#ff8790; color:#350c12; }
       #clearEdit { color:var(--danger); }
       #panel { position:fixed; overflow:hidden; display:flex; flex-direction:column; background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 36px #15101c38; font:14px/1.45 system-ui,sans-serif; }
-      :host([data-position]:not([data-panel])) { left:var(--button-x); top:var(--button-y); right:auto; bottom:auto; }
+      :host([data-position]) { left:var(--button-x); top:var(--button-y); right:auto; bottom:auto; }
       #open { min-height:44px; font:600 14px system-ui,sans-serif; touch-action:none; user-select:none; -webkit-touch-callout:none; }
       #movePanel { display:flex; align-items:center; gap:2px; padding:4px 7px 4px 12px; flex:none; border-bottom:1px solid var(--line); }
       #movePanel strong { flex:1; font-size:14px; min-width:0; cursor:move; }
