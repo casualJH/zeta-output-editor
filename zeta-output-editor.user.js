@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         제타 출력 보정
 // @namespace    zeta-output-editor
-// @version      1.1.3
+// @version      1.1.4
 // @description  Gemini API를 이용하여 출력을 보정합니다
 // @match        https://zeta-ai.io/*
 // @match        https://*.zeta-ai.io/*
@@ -840,7 +840,7 @@
     get('panel').hidden = false;
     applyPanel();
     get('open').setAttribute('aria-expanded', 'true');
-    get('open').hidden = true;
+    // 팝업이 열려 있어도 실행 버튼을 계속 표시합니다.
     get('close').focus();
   };
   get('close').onclick = () => {
